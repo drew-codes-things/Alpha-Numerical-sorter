@@ -1,24 +1,73 @@
-# Alpha-Numerical Sorter  
-A command-line script I made in Python to sort the contents of `.txt`, `.csv`, `.log`, `.md`, or `.json` files alphabetically or numerically, with options for order direction and line filtering.
+# Alpha-Numerical Sorter
 
-## How to use
-1. Run `cd <dir>` to move into the script's directory (`Set-Location` if using PowerShell)
-2. Make sure you have Python 3+ installed. You can check by running `python --version`
-3. Place any `.txt`, `.csv`, `.log`, `.md`, or `.json` files you want to sort in the same directory
-4. Run the script using `python main.py` 
+A Python command-line tool that sorts the lines of any text-based file — alphabetically, numerically, by natural order, or by line length.
 
-## Features
-- Supports `.txt`, `.csv`, `.log`, `.md`, `.json` files
-- Interactive and beginner-friendly CLI
-- Step-by-step sorting with the option to go back by pressing `b`
-- Alphabetical sort with capitalized first letters
-- Numerical sort using the first digit of each line
-- Optional skipping of empty lines
-- Output saved in a separate file to preserve the original
+No dependencies. Pure Python standard library.
 
-## Issues
-Contact me via <a href="mailto:starlover@starlover.online">starlover@starlover.online</a> in case of any issues. Make sure to include:
-- A screenshot of the problem (if applicable)
-- The file you were trying to sort
-- A brief but clear explanation of what went wrong
+---
 
+## Usage
+
+```bash
+python main.py
+```
+
+The script walks you through everything interactively:
+
+1. **Choose a folder** — uses the script's folder by default, or enter a custom path
+2. **Choose a file** — lists all `.txt`, `.csv`, `.log`, and `.md` files in the folder
+3. **Choose a sort mode** (see below)
+4. **Choose order** — ascending or descending
+5. **Remove empty lines?** — yes/no
+6. **Remove duplicate lines?** — yes/no
+7. **Output path** — defaults to `filename_sorted.ext` next to the original
+
+Type `b` at any prompt to go back one step.
+
+---
+
+## Sort modes
+
+| Key | Mode | Description |
+|-----|------|-------------|
+| `a` | Alphabetical | Case-insensitive A–Z sort, first letter capitalised |
+| `n` | Natural | Human sort — `file2` comes before `file10` |
+| `u` | Numeric | Sorts by the first number found in each line |
+| `l` | Length | Sorts lines shortest to longest (or reverse) |
+
+---
+
+## Example
+
+Input (`names.txt`):
+```
+zara
+alice
+bob
+alice
+```
+
+Run with: alphabetical, ascending, remove duplicates → `names_sorted.txt`:
+```
+Alice
+Bob
+Zara
+```
+
+---
+
+## Supported file types
+
+`.txt` `.csv` `.log` `.md`
+
+---
+
+## Test file generator
+
+The `test-file-gen/` folder contains a helper script to generate sample files for testing the sorter.
+
+---
+
+## License
+
+MIT
