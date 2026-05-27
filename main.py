@@ -79,7 +79,6 @@ def sort_lines(lines, mode, reverse, skip_empty, dedupe):
 
     if mode == 'alpha':
         lines = sorted(lines, key=lambda x: x.lower(), reverse=reverse)
-        # Capitalise first character
         lines = [l[0].upper() + l[1:] if l.strip() else l for l in lines]
 
     elif mode == 'natural':
@@ -135,25 +134,21 @@ def main():
 
     try:
         while True:
-            # --- choose folder ---
             folder = choose_folder()
             if folder is None:
                 break
 
-            # --- list files ---
             files = list_supported_files(folder)
             if not files:
                 print("  No supported files found (.txt .csv .log .md).")
                 continue
 
-            # --- choose file ---
             print(f"  Files in {folder}:")
             filename = choose_file(files)
             if filename is None:
                 break
             input_path = os.path.join(folder, filename)
 
-            # --- sort mode ---
             print("\n  Sort mode:")
             for k, (_, label) in MODES.items():
                 print(f"    ({k}) {label}")
@@ -162,13 +157,11 @@ def main():
                 continue
             mode, _ = MODES[mode_key]
 
-            # --- sort order ---
             order = ask("  Order — (a)scending or (d)escending: ", ['a', 'd'])
             if order is None:
                 continue
             reverse = (order == 'd')
 
-            # --- options ---
             skip_empty = ask("  Remove empty lines? y/n: ", ['y', 'n'])
             if skip_empty is None:
                 continue
@@ -179,7 +172,6 @@ def main():
                 continue
             dedupe = (dedupe == 'y')
 
-            # --- output path ---
             base, ext = os.path.splitext(input_path)
             default_out = base + '_sorted' + ext
             print(f"  Output file: {default_out}")
@@ -192,10 +184,8 @@ def main():
             else:
                 output_path = default_out
 
-            # --- run ---
             sort_file(input_path, output_path, mode, reverse, skip_empty, dedupe)
 
-            # --- again? ---
             again = ask("\n  Sort another file? y/n: ", ['y', 'n'])
             if again != 'y':
                 break
