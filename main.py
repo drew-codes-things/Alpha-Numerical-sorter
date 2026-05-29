@@ -88,8 +88,16 @@ def sort_lines(lines, mode, reverse, skip_empty, dedupe, capitalise=False):
         lines = sorted(lines, key=lambda x: natural_key(x), reverse=reverse)
 
     elif mode == 'numeric':
-        # Lines with no numbers sort to the end.
         def num_key(line):
+            """
+            Sort key for numeric mode.
+
+            Lines that contain no number are assigned float('inf') so they
+            always sort to the END in ascending order and to the BEGINNING
+            in descending order. This is intentional: numberless lines are
+            treated as 'beyond the last numeric entry'. If you want them at
+            the start instead, invert the sentinel to float('-inf').
+            """
             m = re.search(r'-?\d+(\.\d+)?', line)
             return float(m.group()) if m else float('inf')
         lines = sorted(lines, key=num_key, reverse=reverse)
@@ -167,7 +175,7 @@ def run_cli(args):
     )
 
 
-def run_interactive():
+def run_interactive(extra_exts=()):
     """Original interactive loop."""
     print("\n  Drew's Alpha-Numerical Sorter")
     print("  " + "-" * 30)
@@ -179,10 +187,14 @@ def run_interactive():
             if folder is None:
                 break
 
-            files = list_supported_files(folder)
+            files = list_supported_files(folder, extra_exts=extra_exts)
             if not files:
-                print("  No supported files found (.txt .csv .log .md).")
-                print("  Use --ext in CLI mode to add more extensions.")
+                exts_shown = ".txt .csv .log .md"
+                if extra_exts:
+                    exts_shown += " " + " ".join(
+                        (e if e.startswith(".") else "." + e) for e in extra_exts
+                    )
+                print(f"  No supported files found ({exts_shown}).")
                 continue
 
             print(f"  Files in {folder}:")
@@ -269,7 +281,8 @@ def parse_args():
     p.add_argument("--in-place",     action="store_true", help="Overwrite the source file instead of creating a new one")
     p.add_argument("--capitalise",   action="store_true", help="Capitalise the first letter of each line (alpha mode only)")
     p.add_argument("--ext",          metavar="EXT",   nargs="+",
-                   help="Additional file extensions to include in interactive file browser (e.g. tsv list nfo)")
+                   help="Additional file extensions to include in the file browser (e.g. tsv list nfo). "
+                        "Works in both CLI and interactive modes.")
     return p.parse_args()
 
 
@@ -278,7 +291,7 @@ def main():
     if args.file:
         run_cli(args)
     else:
-        run_interactive()
+        run_interactive(extra_exts=args.ext or ())
 
 
 if __name__ == '__main__':
