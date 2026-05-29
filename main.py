@@ -1,3 +1,4 @@
+import argparse
 import os
 import re
 import sys
@@ -8,21 +9,23 @@ def clean_path(path):
 
 
 def natural_key(s):
-    """Key for natural / human sort: 'file2' < 'file10'."""
+    """Key for natural/human sort: 'file2' < 'file10'."""
     return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', s)]
 
 
-def list_supported_files(folder):
-    supported_exts = ('.txt', '.csv', '.log', '.md')
+def list_supported_files(folder, extra_exts=()):
+    base_exts = ('.txt', '.csv', '.log', '.md')
+    supported = base_exts + tuple(
+        (e if e.startswith('.') else '.' + e).lower() for e in extra_exts
+    )
     return sorted(
         f for f in os.listdir(folder)
         if os.path.isfile(os.path.join(folder, f))
-        and f.lower().endswith(supported_exts)
+        and f.lower().endswith(supported)
     )
 
 
 def ask(prompt, valid):
-    """Prompt until the user gives a valid answer or types 'b' to go back."""
     valid_lower = [v.lower() for v in valid]
     while True:
         ans = input(prompt).strip().lower()
@@ -48,7 +51,6 @@ def choose_file(files):
 
 
 def choose_folder():
-    """Ask whether to sort from the script folder or a custom path."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     print(f"\n  Default folder: {script_dir}")
     use_custom = ask("  Use a different folder? y/n: ", ['y', 'n'])
@@ -64,7 +66,7 @@ def choose_folder():
     return script_dir
 
 
-def sort_lines(lines, mode, reverse, skip_empty, dedupe):
+def sort_lines(lines, mode, reverse, skip_empty, dedupe, capitalise=False):
     if skip_empty:
         lines = [l for l in lines if l.strip()]
     if dedupe:
@@ -79,12 +81,14 @@ def sort_lines(lines, mode, reverse, skip_empty, dedupe):
 
     if mode == 'alpha':
         lines = sorted(lines, key=lambda x: x.lower(), reverse=reverse)
-        lines = [l[0].upper() + l[1:] if l.strip() else l for l in lines]
+        if capitalise:
+            lines = [l[0].upper() + l[1:] if l.strip() else l for l in lines]
 
     elif mode == 'natural':
         lines = sorted(lines, key=lambda x: natural_key(x), reverse=reverse)
 
     elif mode == 'numeric':
+        # Lines with no numbers sort to the end.
         def num_key(line):
             m = re.search(r'-?\d+(\.\d+)?', line)
             return float(m.group()) if m else float('inf')
@@ -96,20 +100,20 @@ def sort_lines(lines, mode, reverse, skip_empty, dedupe):
     return lines
 
 
-def sort_file(input_path, output_path, mode, reverse, skip_empty, dedupe):
+def sort_file(input_path, output_path, mode, reverse, skip_empty, dedupe, capitalise=False):
     try:
         with open(input_path, 'r', encoding='utf-8') as f:
             lines = [l.rstrip('\n') for l in f]
 
         original_count = len(lines)
-        sorted_lines = sort_lines(lines, mode, reverse, skip_empty, dedupe)
+        sorted_lines = sort_lines(lines, mode, reverse, skip_empty, dedupe, capitalise)
 
         with open(output_path, 'w', encoding='utf-8') as f:
             for l in sorted_lines:
                 f.write(l + '\n')
 
         removed = original_count - len(sorted_lines)
-        print(f"\n  Saved → {output_path}")
+        print(f"\n  Saved -> {output_path}")
         print(f"  Lines: {original_count} in, {len(sorted_lines)} out", end="")
         if removed:
             print(f" ({removed} removed by dedup/empty filter)", end="")
@@ -121,16 +125,53 @@ def sort_file(input_path, output_path, mode, reverse, skip_empty, dedupe):
 
 
 MODES = {
-    'a': ('alpha',   'Alphabetical (A–Z)'),
+    'a': ('alpha',   'Alphabetical (A-Z)'),
     'n': ('natural', 'Natural / human sort  (file2 before file10)'),
-    'u': ('numeric', 'Numeric  (by first number found in each line)'),
+    'u': ('numeric', 'Numeric  (by first number found in each line; lines with no numbers sort to end)'),
     'l': ('length',  'By line length'),
 }
 
+MODE_NAME_MAP = {
+    'alpha': 'alpha', 'a': 'alpha',
+    'natural': 'natural', 'n': 'natural',
+    'numeric': 'numeric', 'u': 'numeric',
+    'length': 'length', 'l': 'length',
+}
 
-def main():
+
+def run_cli(args):
+    """Non-interactive mode when --file is supplied."""
+    input_path = clean_path(args.file)
+    if not os.path.isfile(input_path):
+        print(f"  Error: file not found: {input_path}")
+        sys.exit(1)
+
+    mode = MODE_NAME_MAP.get(args.mode)
+    if not mode:
+        print(f"  Error: unknown mode '{args.mode}'. Choose: alpha, natural, numeric, length")
+        sys.exit(1)
+
+    reverse = (args.order == 'd')
+
+    if args.in_place:
+        output_path = input_path
+    elif args.output:
+        output_path = clean_path(args.output)
+    else:
+        base, ext = os.path.splitext(input_path)
+        output_path = base + '_sorted' + ext
+
+    sort_file(
+        input_path, output_path, mode, reverse,
+        args.remove_empty, args.remove_dupes, args.capitalise,
+    )
+
+
+def run_interactive():
+    """Original interactive loop."""
     print("\n  Drew's Alpha-Numerical Sorter")
     print("  " + "-" * 30)
+    print("  Tip: run with --file to skip the prompts. See --help for options.")
 
     try:
         while True:
@@ -141,6 +182,7 @@ def main():
             files = list_supported_files(folder)
             if not files:
                 print("  No supported files found (.txt .csv .log .md).")
+                print("  Use --ext in CLI mode to add more extensions.")
                 continue
 
             print(f"  Files in {folder}:")
@@ -157,7 +199,7 @@ def main():
                 continue
             mode, _ = MODES[mode_key]
 
-            order = ask("  Order — (a)scending or (d)escending: ", ['a', 'd'])
+            order = ask("  Order -- (a)scending or (d)escending: ", ['a', 'd'])
             if order is None:
                 continue
             reverse = (order == 'd')
@@ -172,19 +214,34 @@ def main():
                 continue
             dedupe = (dedupe == 'y')
 
-            base, ext = os.path.splitext(input_path)
-            default_out = base + '_sorted' + ext
-            print(f"  Output file: {default_out}")
-            custom = ask("  Use a custom output path? y/n: ", ['y', 'n'])
-            if custom is None:
-                continue
-            if custom == 'y':
-                raw = input("  Output path: ")
-                output_path = clean_path(raw)
-            else:
-                output_path = default_out
+            # Capitalise is opt-in and only offered for alpha mode
+            capitalise = False
+            if mode == 'alpha':
+                cap_ans = ask("  Capitalise first letter of each line? y/n: ", ['y', 'n'])
+                if cap_ans is None:
+                    continue
+                capitalise = (cap_ans == 'y')
 
-            sort_file(input_path, output_path, mode, reverse, skip_empty, dedupe)
+            # In-place or new file
+            in_place = ask("  Overwrite source file in-place? y/n: ", ['y', 'n'])
+            if in_place is None:
+                continue
+            if in_place == 'y':
+                output_path = input_path
+            else:
+                base, ext = os.path.splitext(input_path)
+                default_out = base + '_sorted' + ext
+                print(f"  Output file: {default_out}")
+                custom = ask("  Use a custom output path? y/n: ", ['y', 'n'])
+                if custom is None:
+                    continue
+                if custom == 'y':
+                    raw = input("  Output path: ")
+                    output_path = clean_path(raw)
+                else:
+                    output_path = default_out
+
+            sort_file(input_path, output_path, mode, reverse, skip_empty, dedupe, capitalise)
 
             again = ask("\n  Sort another file? y/n: ", ['y', 'n'])
             if again != 'y':
@@ -194,6 +251,34 @@ def main():
         print("\n  Interrupted.")
 
     print("  Bye!")
+
+
+def parse_args():
+    p = argparse.ArgumentParser(
+        description="Alpha-Numerical Sorter -- sort text files alphabetically, numerically, or naturally.",
+        epilog="Omit --file to launch the interactive prompt-based interface.",
+    )
+    p.add_argument("--file",         metavar="PATH",  help="Input file to sort (enables non-interactive mode)")
+    p.add_argument("--mode",         metavar="MODE",  default="natural",
+                   help="Sort mode: alpha | natural | numeric | length (default: natural)")
+    p.add_argument("--output",       metavar="PATH",  help="Output file path (default: <input>_sorted.<ext>)")
+    p.add_argument("--order",        metavar="a|d",   default="a",
+                   help="Sort order: a=ascending, d=descending (default: a)")
+    p.add_argument("--remove-dupes", action="store_true", help="Remove duplicate lines")
+    p.add_argument("--remove-empty", action="store_true", help="Remove empty lines")
+    p.add_argument("--in-place",     action="store_true", help="Overwrite the source file instead of creating a new one")
+    p.add_argument("--capitalise",   action="store_true", help="Capitalise the first letter of each line (alpha mode only)")
+    p.add_argument("--ext",          metavar="EXT",   nargs="+",
+                   help="Additional file extensions to include in interactive file browser (e.g. tsv list nfo)")
+    return p.parse_args()
+
+
+def main():
+    args = parse_args()
+    if args.file:
+        run_cli(args)
+    else:
+        run_interactive()
 
 
 if __name__ == '__main__':
