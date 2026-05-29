@@ -2,22 +2,40 @@
 
 Advanced sorter for mixed alphanumeric data in files or lists.
 
-## Technical Features
-
-- Intelligent mixed sorting (alphabetical + numerical)
-- Supports lists, columns, or full files
-- Custom rules and options
-- Preserves formatting
-
 ## File Structure
 
 ```
 Alpha-Numerical-sorter/
-├── sorter.py
 ├── main.py
 ├── requirements.txt
 ├── README.md
 └── LICENSE
+```
+
+## Installation (Recommended: Virtual Environment)
+
+### On Linux / macOS
+
+```bash
+git clone https://github.com/drew-codes-things/Alpha-Numerical-sorter.git
+cd Alpha-Numerical-sorter
+
+python3 -m venv venv
+source venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+### On Windows
+
+```bash
+git clone https://github.com/drew-codes-things/Alpha-Numerical-sorter.git
+cd Alpha-Numerical-sorter
+
+python -m venv venv
+venv\Scripts\activate
+
+pip install -r requirements.txt
 ```
 
 ## Usage
